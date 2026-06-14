@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Placement Analysis</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i data-lucide="graduation-cap" class="logo-icon"></i>
+                <div class="logo-text">
+                    <h1>CampusPlacement</h1>
+                    <span>Analysis Dashboard</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="active" onclick="showSection('dashboard', this)">
+                        <i data-lucide="layout-dashboard"></i>
+                        <span>Dashboard</span>
+                    </li>
+                    <li onclick="showSection('models', this)">
+                        <i data-lucide="bar-chart-3"></i>
+                        <span>ML Models</span>
+                    </li>
+                    <li onclick="showSection('predict', this)">
+                        <i data-lucide="wand-2"></i>
+                        <span>Predictor</span>
+                    </li>
+                </ul>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="dataset-info">
+                    <p>Dataset: placement.csv</p>
+                    <p id="total-students">Loading...</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="content">
+            <!-- Header -->
+            <header class="content-header">
+                <div class="header-titles">
+                    <h2 id="section-title">Dashboard Overview</h2>
+                    <p id="section-subtitle">Real-time statistics and placement patterns</p>
+                </div>
+                <div class="header-actions">
+                    <div class="best-model-badge">
+                        <span class="badge-label">Best Model:</span>
+                        <span id="best-model-name">...</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard Section -->
+            <div id="dashboard-section" class="content-section active">
+                <!-- Stat Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon indigo"><i data-lucide="users"></i></div>
+                        <div class="stat-info">
+                            <label>Total Students</label>
+                            <h3 id="stat-total">0</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon green"><i data-lucide="user-check"></i></div>
+                        <div class="stat-info">
+                            <label>Placed</label>
+                            <h3 id="stat-placed">0</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon red"><i data-lucide="user-x"></i></div>
+                        <div class="stat-info">
+                            <label>Not Placed</label>
+                            <h3 id="stat-not-placed">0</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon teal"><i data-lucide="trending-up"></i></div>
+                        <div class="stat-info">
+                            <label>Placement Rate</label>
+                            <h3 id="stat-rate">0%</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Grid -->
+                <div class="charts-grid">
+                    <div class="chart-container large">
+                        <div class="chart-header">
+                            <h4>Placement Distribution</h4>
+                            <p>Overview of student placement status</p>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="distChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h4>Gender vs Placement</h4>
+                            <p>Impact of gender on outcomes</p>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="genderChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h4>Work Experience</h4>
+                            <p>Placement trends by experience</p>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="workexChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ML Models Section -->
+            <div id="models-section" class="content-section">
+                <div class="models-overview">
+                    <div class="chart-container full">
+                        <div class="chart-header">
+                            <h4>Classifier Comparison</h4>
+                            <p>Accuracy, Precision, Recall, and F1 scores across 4 models</p>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="modelsChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="models-grid">
+                        <div class="chart-container">
+                            <div class="chart-header">
+                                <h4>ROC Curves</h4>
+                                <p>Receiver Operating Characteristic</p>
+                            </div>
+                            <div class="chart-body">
+                                <canvas id="rocChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <div class="chart-header">
+                                <h4>Feature Importance</h4>
+                                <p>Key drivers for Random Forest</p>
+                            </div>
+                            <div class="chart-body">
+                                <canvas id="importanceChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Predictor Section -->
+            <div id="predict-section" class="content-section">
+                <div class="predictor-container">
+                    <div class="predictor-form-card">
+                        <div class="card-header">
+                            <h3>Calculate Placement Probability</h3>
+                            <p>Enter student details to get an AI-powered prediction</p>
+                        </div>
+                        <form id="predict-form" class="predict-form">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>SSC % (10th Grade)</label>
+                                    <input type="number" step="0.1" name="ssc_p" value="65.0" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>HSC % (12th Grade)</label>
+                                    <input type="number" step="0.1" name="hsc_p" value="68.0" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Degree %</label>
+                                    <input type="number" step="0.1" name="degree_p" value="66.0" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Employability Test %</label>
+                                    <input type="number" step="0.1" name="etest_p" value="70.0" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>MBA %</label>
+                                    <input type="number" step="0.1" name="mba_p" value="63.0" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Gender</label>
+                                    <select name="gender">
+                                        <option value="Male">Male</option>
+                                        <option value="Female">Female</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Work Experience</label>
+                                    <select name="workex">
+                                        <option value="No">No</option>
+                                        <option value="Yes">Yes</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Specialisation</label>
+                                    <select name="specialisation">
+                                        <option value="Mkt&HR">Mkt&HR</option>
+                                        <option value="Mkt&Fin">Mkt&Fin</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>HSC Stream</label>
+                                    <select name="hsc_s">
+                                        <option value="Commerce">Commerce</option>
+                                        <option value="Science">Science</option>
+                                        <option value="Arts">Arts</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Degree Type</label>
+                                    <select name="degree_t">
+                                        <option value="Comm&Mgmt">Comm&Mgmt</option>
+                                        <option value="Sci&Tech">Sci&Tech</option>
+                                        <option value="Others">Others</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button type="submit" class="submit-btn" id="submit-btn">
+                                <span>Run Prediction</span>
+                                <i data-lucide="sparkles"></i>
+                            </button>
+                        </form>
+                    </div>
+
+                    <div id="result-container" class="result-card hidden">
+                        <!-- Result will be injected here -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="app.js"></script>
+    <script>lucide.createIcons();</script>
+</body>
+
+</html>
