@@ -21,6 +21,9 @@ from sklearn.metrics import (
 
 app = FastAPI(title="Campus Placement API")
 
+# Flag to indicate whether models/data loaded successfully on startup
+models_loaded = False
+
 # Enable CORS for frontend development
 app.add_middleware(
     CORSMiddleware,
@@ -121,9 +124,10 @@ try:
     data_raw, data_proc, FEATURES = load_and_preprocess()
     model_results, global_scaler = train_all_models(data_proc, FEATURES)
     best_model_name = max(model_results, key=lambda n: model_results[n]["metrics"]["f1"])
+    models_loaded = True
 except Exception as e:
     print(f"Startup error: {e}")
-    # Initialize with default if error (should be handled better in production)
+    # Keep models_loaded False so endpoints can return a clear 503
     best_model_name = "Random Forest"
 
 # ── Pydantic Models ──────────────────────────────────────────────────
@@ -143,6 +147,9 @@ class PredictInput(BaseModel):
 
 @app.get("/api/stats")
 async def get_stats():
+    if not models_loaded:
+        raise HTTPException(status_code=503, detail="Models not loaded on startup. Check server logs.")
+
     total = len(data_raw)
     placed = int(data_raw["status"].value_counts().get("Placed", 0))
     return {
@@ -159,6 +166,9 @@ async def get_stats():
 
 @app.get("/api/charts")
 async def get_charts():
+    if not models_loaded:
+        raise HTTPException(status_code=503, detail="Models not loaded on startup. Check server logs.")
+
     # 1. Placement Distribution
     dist = data_raw["status"].value_counts().to_dict()
     
@@ -183,6 +193,9 @@ async def get_charts():
 
 @app.get("/api/models")
 async def get_models():
+    if not models_loaded:
+        raise HTTPException(status_code=503, detail="Models not loaded on startup. Check server logs.")
+
     output = {}
     for name, data in model_results.items():
         output[name] = {
@@ -194,6 +207,9 @@ async def get_models():
 
 @app.post("/api/predict")
 async def predict(input_data: PredictInput):
+    if not models_loaded:
+        raise HTTPException(status_code=503, detail="Models not loaded on startup. Check server logs.")
+
     hsc_s_map = {"Arts": 0, "Commerce": 1, "Science": 2}
     degree_t_map = {"Comm&Mgmt": 0, "Others": 1, "Sci&Tech": 2}
     spec_map = {"Mkt&Fin": 0, "Mkt&HR": 1}
