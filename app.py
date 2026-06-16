@@ -24,6 +24,15 @@ app = FastAPI(title="Campus Placement API")
 # Flag to indicate whether models/data loaded successfully on startup
 models_loaded = False
 
+# Globals populated on startup
+data_raw = None
+data_proc = None
+FEATURES = None
+model_results = {}
+global_scaler = None
+best_model_name = None
+import asyncio
+
 # Enable CORS for frontend development
 app.add_middleware(
     CORSMiddleware,
@@ -120,15 +129,19 @@ def train_all_models(df_proc, FEATURES):
     return results, sc
 
 # Initializing data and models on startup
-try:
-    data_raw, data_proc, FEATURES = load_and_preprocess()
-    model_results, global_scaler = train_all_models(data_proc, FEATURES)
-    best_model_name = max(model_results, key=lambda n: model_results[n]["metrics"]["f1"])
-    models_loaded = True
-except Exception as e:
-    print(f"Startup error: {e}")
-    # Keep models_loaded False so endpoints can return a clear 503
-    best_model_name = "Random Forest"
+@app.on_event("startup")
+async def startup_event():
+    global data_raw, data_proc, FEATURES, model_results, global_scaler, best_model_name, models_loaded
+    try:
+        # Run blocking data load and training in a thread to avoid blocking the event loop
+        data_raw, data_proc, FEATURES = await asyncio.to_thread(load_and_preprocess)
+        model_results, global_scaler = await asyncio.to_thread(train_all_models, data_proc, FEATURES)
+        best_model_name = max(model_results, key=lambda n: model_results[n]["metrics"]["f1"])
+        models_loaded = True
+        print("Models loaded on startup.")
+    except Exception as e:
+        print(f"Startup error: {e}")
+        # leave models_loaded False so endpoints return 503
 
 # ── Pydantic Models ──────────────────────────────────────────────────
 class PredictInput(BaseModel):
