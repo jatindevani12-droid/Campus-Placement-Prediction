@@ -56,6 +56,11 @@ async def read_css():
 async def read_js():
     return FileResponse(os.path.join(BASE_DIR, "app.js"))
 
+@app.get("/favicon.ico")
+async def favicon():
+    # Return no-content for favicon requests if no icon is present.
+    return FileResponse(os.path.join(BASE_DIR, "favicon.ico")) if os.path.exists(os.path.join(BASE_DIR, "favicon.ico")) else {"status": "no favicon"}
+
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "models_loaded": models_loaded}
@@ -276,7 +281,7 @@ async def predict(input_data: PredictInput):
 if __name__ == "__main__":
     import uvicorn
     # Start the server
-    port = int(os.environ.get("PORT", 8000))
+    port = int(os.environ.get("PORT", 8080))
     print("Starting Campus Placement API Server...")
     print(f"URL: http://localhost:{port}")
     uvicorn.run(app, host="0.0.0.0", port=port)
