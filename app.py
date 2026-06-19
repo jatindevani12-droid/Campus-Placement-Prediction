@@ -21,7 +21,9 @@ from sklearn.metrics import (
 
 app = FastAPI(title="Campus Placement API")
 
-# Flag to indicate whether models/data loaded successfully on startup
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Flag to indicate whether models/data loaded successfully
 models_loaded = False
 
 # Globals populated on startup
@@ -44,22 +46,27 @@ app.add_middleware(
 # ── Static Files (Serve Frontend) ────────────────────────────────────
 @app.get("/")
 async def read_index():
-    return FileResponse("index.html")
+    return FileResponse(os.path.join(BASE_DIR, "index.html"))
 
 @app.get("/styles.css")
 async def read_css():
-    return FileResponse("styles.css")
+    return FileResponse(os.path.join(BASE_DIR, "styles.css"))
 
 @app.get("/app.js")
 async def read_js():
-    return FileResponse("app.js")
+    return FileResponse(os.path.join(BASE_DIR, "app.js"))
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok", "models_loaded": models_loaded}
 
 # ── Data Loading & Preprocessing ────────────────────────────────────
 def load_and_preprocess():
-    if not os.path.exists("placement.csv"):
+    csv_path = os.path.join(BASE_DIR, "placement.csv")
+    if not os.path.exists(csv_path):
         raise FileNotFoundError("placement.csv not found in directory.")
         
-    df = pd.read_csv("placement.csv")
+    df = pd.read_csv(csv_path)
     df_raw = df.copy()
     
     # Processed copy
@@ -146,11 +153,6 @@ async def ensure_models_loaded():
     except Exception as e:
         print(f"Model loading error: {e}")
         return False
-
-@app.get("/health")
-async def health_check():
-    """Quick health check endpoint that doesn't require model loading."""
-    return {"status": "ok"}
 
 # ── Pydantic Models ──────────────────────────────────────────────────
 class PredictInput(BaseModel):
