@@ -8,5 +8,4 @@ RUN apt-get update && apt-get install -y --no-install-recommends build-essential
 	apt-get purge -y --auto-remove build-essential gcc && rm -rf /var/lib/apt/lists/*
 EXPOSE 8000
 ENV PORT=8000
-# Use a shell form so the ${PORT:-8000} default expression is expanded by the shell
-CMD ["sh", "-c", "uvicorn app:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["python", "app.py"]

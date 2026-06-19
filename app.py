@@ -128,20 +128,29 @@ def train_all_models(df_proc, FEATURES):
     
     return results, sc
 
-# Initializing data and models on startup
-@app.on_event("startup")
-async def startup_event():
+# Helper function for lazy loading models
+async def ensure_models_loaded():
     global data_raw, data_proc, FEATURES, model_results, global_scaler, best_model_name, models_loaded
+    
+    if models_loaded:
+        return True
+    
     try:
         # Run blocking data load and training in a thread to avoid blocking the event loop
         data_raw, data_proc, FEATURES = await asyncio.to_thread(load_and_preprocess)
         model_results, global_scaler = await asyncio.to_thread(train_all_models, data_proc, FEATURES)
         best_model_name = max(model_results, key=lambda n: model_results[n]["metrics"]["f1"])
         models_loaded = True
-        print("Models loaded on startup.")
+        print("Models loaded on first request.")
+        return True
     except Exception as e:
-        print(f"Startup error: {e}")
-        # leave models_loaded False so endpoints return 503
+        print(f"Model loading error: {e}")
+        return False
+
+@app.get("/health")
+async def health_check():
+    """Quick health check endpoint that doesn't require model loading."""
+    return {"status": "ok"}
 
 # ── Pydantic Models ──────────────────────────────────────────────────
 class PredictInput(BaseModel):
@@ -160,8 +169,8 @@ class PredictInput(BaseModel):
 
 @app.get("/api/stats")
 async def get_stats():
-    if not models_loaded:
-        raise HTTPException(status_code=503, detail="Models not loaded on startup. Check server logs.")
+    if not await ensure_models_loaded():
+        raise HTTPException(status_code=503, detail="Failed to load models. Check server logs.")
 
     total = len(data_raw)
     placed = int(data_raw["status"].value_counts().get("Placed", 0))
@@ -179,8 +188,8 @@ async def get_stats():
 
 @app.get("/api/charts")
 async def get_charts():
-    if not models_loaded:
-        raise HTTPException(status_code=503, detail="Models not loaded on startup. Check server logs.")
+    if not await ensure_models_loaded():
+        raise HTTPException(status_code=503, detail="Failed to load models. Check server logs.")
 
     # 1. Placement Distribution
     dist = data_raw["status"].value_counts().to_dict()
@@ -206,8 +215,8 @@ async def get_charts():
 
 @app.get("/api/models")
 async def get_models():
-    if not models_loaded:
-        raise HTTPException(status_code=503, detail="Models not loaded on startup. Check server logs.")
+    if not await ensure_models_loaded():
+        raise HTTPException(status_code=503, detail="Failed to load models. Check server logs.")
 
     output = {}
     for name, data in model_results.items():
@@ -220,8 +229,8 @@ async def get_models():
 
 @app.post("/api/predict")
 async def predict(input_data: PredictInput):
-    if not models_loaded:
-        raise HTTPException(status_code=503, detail="Models not loaded on startup. Check server logs.")
+    if not await ensure_models_loaded():
+        raise HTTPException(status_code=503, detail="Failed to load models. Check server logs.")
 
     hsc_s_map = {"Arts": 0, "Commerce": 1, "Science": 2}
     degree_t_map = {"Comm&Mgmt": 0, "Others": 1, "Sci&Tech": 2}
@@ -265,6 +274,7 @@ async def predict(input_data: PredictInput):
 if __name__ == "__main__":
     import uvicorn
     # Start the server
+    port = int(os.environ.get("PORT", 8000))
     print("Starting Campus Placement API Server...")
-    print("URL: http://localhost:8000")
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    print(f"URL: http://localhost:{port}")
+    uvicorn.run(app, host="0.0.0.0", port=port)
